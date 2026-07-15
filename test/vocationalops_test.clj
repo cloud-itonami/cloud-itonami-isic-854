@@ -136,7 +136,7 @@
 (deftest operation-schema
   (testing "Operation definitions exist"
     (let [enroll-op (get op/all-operations :schedule-course-enrollment)]
-      (is (not-nil enroll-op))
+      (is (not (nil? enroll-op)))
       (is (= "Schedule Course Enrollment" (:name enroll-op))))))
 
 (deftest operation-validate

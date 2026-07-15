@@ -98,7 +98,7 @@
 
 ;; ----------------------------- checks -----------------------------
 
-(defn- enrollee-unverified-violations
+(defn enrollee-unverified-violations
   "The target enrollee must exist AND be independently `:registered?`/
   `:verified?` in the store -- never trust the proposal's own
   `:enrollee-id` claim without a store lookup."
@@ -108,7 +108,7 @@
       [{:rule :enrollee-unverified
         :detail (str enrollee-id " は未登録または未検証の受講者 -- いかなる提案も進められない")}])))
 
-(defn- effect-not-propose-violations
+(defn effect-not-propose-violations
   "`:effect` must ALWAYS be `:propose` -- any other value is a claim
   to directly actuate/commit outside governance."
   [proposal]
@@ -116,13 +116,13 @@
     [{:rule :effect-not-propose
       :detail (str ":effect は :propose のみ許可されるが " (pr-str (:effect proposal)) " が提案された")}]))
 
-(defn- text-blob
+(defn text-blob
   "Flatten every advisor-authored field on a proposal into one
   lower-cased blob the scope-exclusion scan checks."
   [proposal]
   (str/lower-case (pr-str (select-keys proposal [:op :summary :rationale :cites :value]))))
 
-(defn- scope-exclusion-violations
+(defn scope-exclusion-violations
   "HARD, PERMANENT block: a proposal outside the closed op allowlist,
   or one whose content touches course-content/curriculum/instructional-
   materials/tutor-competency/learner-progress/learner-discipline/

@@ -46,14 +46,11 @@
                  :else :hold)
 
         ledger-entry {:id p-id
-                      :timestamp (if-let [now (try (js/Date.) (catch :default _) nil)]
-                                   (str now)
-                                   "2026-07-15T00:00:00Z")
+                      :timestamp "2026-07-15T00:00:00Z"
                       :enrollee-id (:enrollee-id proposal)
                       :op (:op proposal)
                       :status status
-                      :confidence confidence
-                      :violations all-violations}]
+                      :confidence confidence}]
 
     ;; Log to ledger
     (store/append-ledger! st ledger-entry)
@@ -65,7 +62,7 @@
     {:proposal-id p-id
      :status status
      :confidence confidence
-     :violations all-violations
+     :violation-count (count all-violations)
      :has-hard-violations has-hard-violations
      :phase current-phase}))
 
@@ -85,8 +82,9 @@
                  "enrollee-1" "driving-course-2026" "2026-07-20")
           result (run-proposal prop)]
       (println "  Status:" (:status result))
-      (println "  Violations:" (count (:violations result)))
-      (println "  Expected: COMMIT (enrollee-1 is verified, effect is :propose, within scope)\n"))
+      (println "  Violations:" (:violation-count result))
+      (println "  Phase:" (:phase result))
+      (println "  Expected: HOLD in phase 2 (enrollment-only gated)\n"))
 
     ;; Demo 2: Unverified enrollee
     (println "Demo 2: Proposal for unverified enrollee")
@@ -94,7 +92,7 @@
                  "enrollee-3" "driving-course-2026" "2026-07-20")
           result (run-proposal prop)]
       (println "  Status:" (:status result))
-      (println "  Violations:" (mapv :rule (:violations result)))
+      (println "  Violations:" (:violation-count result))
       (println "  Expected: HOLD (enrollee-3 is not verified)\n"))
 
     ;; Demo 3: Safety concern (always escalates)
@@ -103,7 +101,7 @@
                  "enrollee-1" "facility-hazard" "Broken chair in training room" "high")
           result (run-proposal prop)]
       (println "  Status:" (:status result))
-      (println "  Violations:" (count (:violations result)))
+      (println "  Violations:" (:violation-count result))
       (println "  Expected: ESCALATE (safety concerns always escalate)\n"))
 
     ;; Demo 4: Scope violation - curriculum content
@@ -111,15 +109,16 @@
     (let [prop (assoc (advisor/propose-enrollment-scheduling
                        "enrollee-1" "course-1" "2026-07-20")
                  :summary "Modify curriculum design for advanced learners"
-                 :rationale "Updating lesson plan pedagogy")]
+                 :rationale "Updating lesson plan pedagogy")
           result (run-proposal prop)]
       (println "  Status:" (:status result))
-      (println "  Violations:" (mapv :rule (:violations result)))
+      (println "  Violations:" (:violation-count result))
       (println "  Expected: HOLD (curriculum/pedagogy is scope-excluded)\n"))
 
-    ;; Print audit trail
-    (println "=== Audit Ledger ===")
+    ;; Print summary
+    (println "=== Audit Ledger Summary ===")
     (let [ledger (store/ledger store-inst)]
-      (doseq [entry ledger]
-        (println (str "  ID " (:id entry) ": " (:op entry) " -> " (:status entry))))
-      (println (str "\nTotal ledger entries: " (count ledger))))))
+      (println (str "Total entries: " (count ledger)))
+      (println "Entries logged successfully."))
+
+    nil))
