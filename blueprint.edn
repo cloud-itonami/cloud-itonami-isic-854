@@ -1,105 +1,11 @@
-{:actor/name "vocationalops"
- :actor/isic-class 854
- :actor/domain "adult-vocational-continuing-education"
- :actor/scope :administrative-coordination
- :actor/lineage "cloud-itonami/cloud-itonami-isic-852"
-
- :modules
- {:store
-  {:cljc true
-   :protocol true
-   :implementation "MemStore (atom-backed, deterministic)"
-   :exports ["Store" "MemStore" "seed-db" "mem-store" "demo-data"]}
-
-  :governor
-  {:cljc true
-   :hardchecks
-   [{:name "enrollee-unverified"
-     :description "Target enrollee must be :registered?/:verified? in store"
-     :permanent true
-     :overridable false}
-    {:name "effect-not-propose"
-     :description "Effect must be :propose (never :commit or other)"
-     :permanent true
-     :overridable false}
-    {:name "scope-exclusion"
-     :description "Blocks curriculum/instruction/assessment/discipline decisions"
-     :permanent true
-     :overridable false}]
-   :exports ["allowed-ops" "always-escalate-ops" "confidence-floor" "enrollee-unverified-violations" "effect-not-propose-violations" "scope-exclusion-violations"]}
-
-  :phase
-  {:cljc true
-   :phases
-   [{:number 0 :name "Read-Only" :auto #{} :escalate #{:flag-safety-concern}}
-    {:number 1 :name "Enrollment Scheduling" :auto #{} :escalate #{:flag-safety-concern}}
-    {:number 2 :name "Facility & Supply Coordination" :auto #{} :escalate #{:flag-safety-concern}}
-    {:number 3 :name "High-Confidence Auto-Commit"
-     :auto #{:schedule-course-enrollment :coordinate-facility-booking
-              :coordinate-supply-request :schedule-instructor-shift-proposal}
-     :escalate #{:flag-safety-concern}}]
-   :exports ["phases" "phase-info" "can-auto-commit?" "always-escalates-in-phase?"]}
-
-  :operation
-  {:cljc true
-   :closed-allowlist
-   [{:op :schedule-course-enrollment
-     :description "Register enrollee for a course/session"
-     :fields [:enrollee-id :course-id :session-date :duration-weeks]
-     :phase-available-from 1}
-    {:op :coordinate-facility-booking
-     :description "Book classroom/training room"
-     :fields [:enrollee-id :facility-id :booking-date :duration-hours]
-     :phase-available-from 2}
-    {:op :coordinate-supply-request
-     :description "Request non-instructional consumables"
-     :fields [:enrollee-id :supply-list :requested-delivery-date]
-     :phase-available-from 2}
-    {:op :schedule-instructor-shift-proposal
-     :description "Propose instructor assignment (proposal only)"
-     :fields [:enrollee-id :instructor-id :shift-date :duration-hours]
-     :phase-available-from 2
-     :always-escalates false}
-    {:op :flag-safety-concern
-     :description "Escalate facility/wellbeing safety concern"
-     :fields [:enrollee-id :concern-type :description :severity]
-     :phase-available-from 1
-     :always-escalates true}]
-   :exports ["all-operations" "validate-operation" "is-always-escalate?" "available-in-phase?"]}
-
-  :advisor
-  {:cljc true
-   :confidence-default 0.75
-   :exports ["propose-enrollment-scheduling" "propose-facility-booking"
-             "propose-supply-request" "propose-instructor-shift"
-             "flag-safety-concern" "with-confidence" "with-rationale" "with-cites"]}
-
-  :sim
-  {:cljc true
-   :harness true
-   :demo-scenarios 4
-   :exports ["sim-state" "run-proposal" "demo-run"]}}
-
- :tests
- {:path "test/vocationalops_test.clj"
-  :count 31
-  :coverage
-  {:store 5
-   :governor 10
-   :phase 4
-   :advisor 2
-   :operation 4
-   :sim 1
-   :integration 5}}
-
- :audit-ledger
- {:append-only true
-   :immutable true
-   :fields [:id :timestamp :enrollee-id :op :status :confidence :violations]}
-
- :constraints
- {:frozen-checks ["enrollee-unverified" "effect-not-propose" "scope-exclusion"]
-  :frozen-scope ["not-curriculum" "not-instruction" "not-assessment" "not-discipline"]
-  :frozen-allowlist [:schedule-course-enrollment :coordinate-facility-booking
-                     :coordinate-supply-request :schedule-instructor-shift-proposal
-                     :flag-safety-concern]}}
+{:itonami.blueprint/id "cloud-itonami-isic-854"
+ :itonami.blueprint/name "Other Education (Adult Vocational & Continuing Education) - Administrative Coordination"
+ :itonami.blueprint/isic-rev4 "854"
+ :itonami.blueprint/domain :services/vocational-education
+ :itonami.blueprint/license "AGPL-3.0-or-later"
+ :itonami.blueprint/social-impact [:learner-safety :administrative-coordination :equitable-access]
+ :itonami.blueprint/governor :vocationalops-governor
+ :itonami.blueprint/robotics false
+ :itonami.blueprint/required-technologies [:identity :forms :dmn :bpmn :audit-ledger]
+ :itonami.blueprint/status :public-oss
+ :itonami.blueprint/maturity :implemented}
