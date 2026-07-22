@@ -152,3 +152,44 @@
 (deftest sim-demo-runs
   (testing "Simulation demo completes without error"
     (is (nil? (sim/demo-run)))))
+
+;; ----------------------------- backend parity (MemStore vs DatomicStore) -----------------------------
+;; Proves `DatomicStore` satisfies the SAME `Store` protocol contract as `MemStore` --
+;; the same pattern `cloud-itonami-isic-7810`'s `employmentops.store-contract-test` uses.
+
+(defn- backends []
+  [["MemStore" (store/seed-db)] ["DatomicStore" (store/datomic-seed-db)]])
+
+(deftest read-parity
+  (doseq [[label s] (backends)]
+    (testing label
+      (is (= "Alice Smith" (:name (store/enrollee s "enrollee-1"))))
+      (is (true? (:registered? (store/enrollee s "enrollee-1"))))
+      (is (true? (:verified? (store/enrollee s "enrollee-1"))))
+      (is (false? (:verified? (store/enrollee s "enrollee-3"))) "enrollee-3 is registered but unverified")
+      (is (nil? (store/enrollee s "no-such-enrollee")))
+      (is (= ["enrollee-1" "enrollee-2" "enrollee-3"] (mapv :enrollee-id (store/all-enrollees s))))
+      (is (= [] (store/ledger s)))
+      (is (= [] (store/coordination-log s))))))
+
+(deftest write-and-ledger-parity
+  (doseq [[label s] (backends)]
+    (testing label
+      (testing "commit-record! appends to coordination-log"
+        (store/commit-record! s {:op :schedule-course-enrollment :enrollee-id "enrollee-1" :value {:course "c1"}})
+        (is (= 1 (count (store/coordination-log s))))
+        (is (= "enrollee-1" (:enrollee-id (first (store/coordination-log s))))))
+      (testing "append-ledger! is append-only and order-preserving"
+        (store/append-ledger! s {:op :a :disposition :commit})
+        (store/append-ledger! s {:op :b :disposition :hold})
+        (is (= [:commit :hold] (mapv :disposition (store/ledger s))))))))
+
+(deftest datomic-empty-store-is-usable
+  (let [s (store/datomic-store)]
+    (is (nil? (store/enrollee s "nope")))
+    (is (= [] (store/all-enrollees s)))
+    (is (= [] (store/ledger s)))
+    (is (= [] (store/coordination-log s)))
+    (store/with-enrollees s {"x" {:enrollee-id "x" :name "New Enrollee" :skill-level "beginner"
+                                  :registered? true :verified? false}})
+    (is (= "New Enrollee" (:name (store/enrollee s "x"))))))
