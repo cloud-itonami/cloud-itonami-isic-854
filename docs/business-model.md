@@ -71,11 +71,16 @@ narrower, single-purpose coordination tool rather than a full LMS — and
 the HR/CRM/recruiting flagships, which this market's own (admittedly
 imperfect) comps don't support either.
 
-**Subscribe**: a live Stripe Payment Link for the Managed Training Ops
-(Starter) tier is pending — blocked this session on a 1Password CLI
-re-authentication needed to create the live Stripe object, not yet
-available. This section will be updated with the real link once created.
-**No provider has claimed or subscribed to this tier.**
+**Subscribe (2026-07-23)**: a live Stripe Payment Link for the Managed
+Training Ops (Starter) tier (¥20,000/月 flat) is available now —
+[**subscribe to Managed Training Ops — Starter**](https://buy.stripe.com/8x24gyewP8FOeWYdIzbMQ0o).
+This is a no-code Stripe-hosted checkout; nothing in this repo's actor code
+changed. After subscribing, contact gftdcojp via an [operator-interest
+issue](https://github.com/cloud-itonami/cloud-itonami-isic-854/issues/new?template=operator-interest.yml)
+to arrange managed-tenant setup (manual fulfillment today, no automated
+onboarding yet). **No provider has claimed or subscribed to this tier
+yet — this is a live, working checkout with zero paid tenants, not a
+claim of existing revenue.**
 
 ## Unit Economics (worked example, illustrative)
 
