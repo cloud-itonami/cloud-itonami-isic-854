@@ -127,6 +127,18 @@
       (is (= "e1" (:enrollee-id prop)))
       (is (>= (:confidence prop) 0)))))
 
+(deftest advisor-supply-request-rationale-does-not-self-block
+  ;; regression: propose-supply-request's own rationale used to say
+  ;; "non-instructional consumables" -- the substring "instructional"
+  ;; is one of governor's scope-excluded-terms, so the advisor's own
+  ;; correct within-scope description of the SAME clean proposal false-
+  ;; triggered a HARD scope-exclusion hold, discovered by actually
+  ;; running the full execute-proposal! pipeline (not caught by any
+  ;; unit test that only exercises store/governor/advisor in isolation).
+  (let [prop (advisor/propose-supply-request "e1" ["safety goggles"] "2026-08-05")]
+    (is (empty? (governor/scope-exclusion-violations prop))
+        "the advisor's own rationale for this in-scope op must never self-trigger scope-exclusion")))
+
 (deftest advisor-safety-concern
   (testing "Safety concerns have high confidence"
     (let [prop (advisor/flag-safety-concern "e1" "hazard" "Broken equipment" "high")]
@@ -193,3 +205,66 @@
     (store/with-enrollees s {"x" {:enrollee-id "x" :name "New Enrollee" :skill-level "beginner"
                                   :registered? true :verified? false}})
     (is (= "New Enrollee" (:name (store/enrollee s "x"))))))
+
+;; ----------------------------- execute-proposal! (real store wiring) -----------------------------
+
+(deftest execute-proposal-commits-clean-proposal-at-phase-3
+  (let [s (store/seed-db)
+        proposal (advisor/propose-enrollment-scheduling "enrollee-1" "course-1" "2026-08-01")
+        result (op/execute-proposal! proposal s 3)]
+    (is (= :committed (:status result)))
+    (is (= 1 (count (store/coordination-log s))))
+    (is (= 1 (count (store/ledger s))))
+    (is (= :committed (:t (first (store/ledger s)))))))
+
+(deftest execute-proposal-always-escalates-safety-concern-even-at-phase-3
+  (let [s (store/seed-db)
+        proposal (advisor/flag-safety-concern "enrollee-1" "facility-hazard" "loose wiring in workshop" "high")
+        result (op/execute-proposal! proposal s 3)]
+    (is (= :escalated (:status result)))
+    (is (= 0 (count (store/coordination-log s))) "never auto-commits")
+    (is (= :approval-requested (:t (first (store/ledger s)))))
+    (is (= "always-escalate-safety-concern" (:reason (first (store/ledger s)))))))
+
+(deftest execute-proposal-requires-approval-below-phase-3
+  (let [s (store/seed-db)
+        proposal (advisor/propose-enrollment-scheduling "enrollee-1" "course-1" "2026-08-01")
+        result (op/execute-proposal! proposal s 1)]
+    (is (= :escalated (:status result)))
+    (is (= 0 (count (store/coordination-log s))))
+    (is (= "phase-requires-approval" (:reason (first (store/ledger s)))))))
+
+(deftest execute-proposal-holds-unverified-enrollee
+  (let [s (store/seed-db)
+        proposal (advisor/propose-facility-booking "enrollee-3" "facility-1" "2026-08-01" 2)
+        result (op/execute-proposal! proposal s 2)]
+    (is (= :held (:status result)))
+    (is (= 0 (count (store/coordination-log s))))
+    (is (= :governor-hold (:t (first (store/ledger s)))))
+    (is (= :enrollee-unverified (:rule (first (:violations result)))))))
+
+(deftest execute-proposal-rejects-when-phase-disallows-op
+  (let [s (store/seed-db)
+        proposal (advisor/propose-facility-booking "enrollee-1" "facility-1" "2026-08-01" 2)
+        result (op/execute-proposal! proposal s 1)]
+    (is (= :rejected (:status result)))
+    (is (= 0 (count (store/ledger s))) "no store write at all when the phase blocks the op")))
+
+(deftest execute-proposal-holds-scope-excluded-content
+  (let [s (store/seed-db)
+        proposal (-> (advisor/propose-supply-request "enrollee-1" ["textbooks"] "2026-08-01")
+                     (advisor/with-rationale "This actually concerns the course curriculum design"))
+        result (op/execute-proposal! proposal s 3)]
+    (is (= :held (:status result)))
+    (is (= :scope-excluded (:rule (first (:violations result)))))))
+
+(deftest approve-and-commit-persists-an-escalated-proposal
+  (let [s (store/seed-db)
+        proposal (advisor/flag-safety-concern "enrollee-1" "facility-hazard" "loose wiring" "high")
+        escalated (op/execute-proposal! proposal s 3)
+        record (op/approve-and-commit! (:proposal escalated) s "op-1")]
+    (is (= "enrollee-1" (:enrollee-id record)))
+    (is (= 1 (count (store/coordination-log s))))
+    (is (= 2 (count (store/ledger s))) "approval-requested + approval-granted")
+    (is (= :approval-granted (:t (last (store/ledger s)))))
+    (is (= "op-1" (:by (last (store/ledger s)))))))
