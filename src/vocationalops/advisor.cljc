@@ -46,7 +46,7 @@
    :requested-delivery-date requested-date
    :confidence default-confidence
    :summary (str "Propose supply request for " enrollee-id)
-   :rationale "Supply coordination (non-instructional consumables) is within administrative scope"
+   :rationale "Supply coordination (non-teaching consumables) is within administrative scope"
    :cites []})
 
 (defn propose-instructor-shift
