@@ -72,13 +72,13 @@ This repository implements the `vocationalops` actor for ISIC Rev.4 class 854 (o
 ### Running the Demo
 
 ```bash
-clj -A:nbb -c "vocationalops.sim" -e "(sim/demo-run)"
+kbb -A:nbb -c "vocationalops.sim" -e "(sim/demo-run)"
 ```
 
 ### Running Tests
 
 ```bash
-clj -M:test
+kbb -M:test
 ```
 
 ## Rollout Phases

@@ -50,7 +50,7 @@ Attempting to use the actor for any of these purposes will be hard-blocked and l
 ## Testing & Verification
 
 Before deployment:
-- All tests must pass: `clj -M:test`
+- All tests must pass: `kbb -M:test`
 - Governor checks must be verified to reject scope-excluded proposals
 - Audit ledger must demonstrate immutable logging of all decisions
 
